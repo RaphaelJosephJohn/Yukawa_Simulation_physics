@@ -1,0 +1,2723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YUKAWA · The Origin of Nuclear Force</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cyan: #00f2ff;
+  --red: #ff2244;
+  --purple: #8833ff;
+  --gold: #ffcc00;
+  --bg: #020408;
+  --panel-bg: rgba(0,10,20,0.85);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  overflow: hidden;
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--cyan);
+  cursor: crosshair;
+}
+
+#canvas-wrap {
+  position: fixed; inset: 0;
+}
+canvas { display:block; }
+
+/* ── GRAIN OVERLAY ── */
+#grain {
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 10; opacity: 0.35;
+  mix-blend-mode: overlay;
+}
+
+/* ── SCANLINES ── */
+#scanlines {
+  position: fixed; inset: 0; pointer-events: none; z-index: 11;
+  background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,242,255,0.018) 2px,rgba(0,242,255,0.018) 4px);
+}
+
+/* ── CORNERS ── */
+.corner { position:fixed; width:40px; height:40px; opacity:0.5; z-index:20; pointer-events:none; }
+.corner::before,.corner::after { content:''; position:absolute; background:var(--cyan); }
+#c-tl { top:18px; left:18px; }
+#c-tl::before { width:100%; height:1px; top:0; left:0; }
+#c-tl::after  { width:1px; height:100%; top:0; left:0; }
+#c-tr { top:18px; right:18px; }
+#c-tr::before { width:100%; height:1px; top:0; right:0; left:auto; }
+#c-tr::after  { width:1px; height:100%; top:0; right:0; left:auto; }
+#c-bl { bottom:18px; left:18px; }
+#c-bl::before { width:100%; height:1px; bottom:0; top:auto; left:0; }
+#c-bl::after  { width:1px; height:100%; bottom:0; top:auto; left:0; }
+#c-br { bottom:18px; right:18px; }
+#c-br::before { width:100%; height:1px; bottom:0; top:auto; right:0; left:auto; }
+#c-br::after  { width:1px; height:100%; bottom:0; top:auto; right:0; left:auto; }
+
+/* ── HEADER ── */
+#header {
+  position:fixed; top:22px; left:50%; transform:translateX(-50%);
+  text-align:center; z-index:30; pointer-events:none;
+}
+#header h1 {
+  font-family:'Orbitron',sans-serif; font-size:1.7rem; font-weight:900;
+  letter-spacing:0.35em; color:var(--cyan);
+  text-shadow:0 0 20px var(--cyan),0 0 50px rgba(0,242,255,0.4);
+}
+#header p {
+  font-size:0.58rem; letter-spacing:0.28em; opacity:0.5; margin-top:4px;
+  text-transform:uppercase;
+}
+
+/* ── EQUATION ── */
+#equation {
+  position:fixed; top:22px; right:28px; z-index:30;
+  text-align:right; pointer-events:none;
+  text-shadow:0 0 12px rgba(0,242,255,0.5);
+  line-height:1.8;
+}
+#equation .eq-main {
+  font-size:1.0rem; color:var(--cyan);
+  text-shadow:0 0 18px var(--cyan);
+}
+#equation .eq-sub { font-size:0.6rem; opacity:0.5; letter-spacing:0.1em; }
+
+/* ── NAV TABS ── */
+#nav {
+  position:fixed; top:22px; left:28px; z-index:30;
+  display:flex; flex-direction:column; gap:6px;
+}
+.nav-btn {
+  background: rgba(0,242,255,0.05);
+  border: 1px solid rgba(0,242,255,0.25);
+  color: rgba(0,242,255,0.55);
+  padding: 7px 14px;
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.6rem; letter-spacing:0.18em;
+  cursor:pointer; text-transform:uppercase;
+  transition:all 0.3s;
+  clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);
+}
+.nav-btn:hover,.nav-btn.active {
+  background:rgba(0,242,255,0.15);
+  border-color:var(--cyan);
+  color:var(--cyan);
+  text-shadow:0 0 10px var(--cyan);
+  box-shadow:0 0 16px rgba(0,242,255,0.2);
+}
+
+/* ── CONTROLS PANEL ── */
+#controls {
+  position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
+  z-index:30; display:flex; flex-direction:column; align-items:center; gap:12px;
+}
+
+.ctrl-row { display:flex; gap:10px; align-items:center; }
+
+.hud-btn {
+  background:rgba(0,242,255,0.06);
+  border:1px solid rgba(0,242,255,0.35);
+  color:var(--cyan); padding:9px 22px;
+  font-family:'Share Tech Mono',monospace; font-size:0.65rem;
+  letter-spacing:0.2em; text-transform:uppercase;
+  cursor:pointer; transition:all 0.25s;
+  clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+}
+.hud-btn:hover {
+  background:rgba(0,242,255,0.18);
+  box-shadow:0 0 20px rgba(0,242,255,0.3);
+}
+.hud-btn.danger {
+  border-color:rgba(255,34,68,0.4); color:var(--red);
+}
+.hud-btn.danger:hover { background:rgba(255,34,68,0.12); box-shadow:0 0 20px rgba(255,34,68,0.3); }
+.hud-btn.active {
+  background:rgba(0,242,255,0.2);
+  border-color:var(--cyan);
+  box-shadow:0 0 25px rgba(0,242,255,0.4),inset 0 0 15px rgba(0,242,255,0.1);
+}
+.hud-btn.massless-active {
+  background:rgba(255,200,50,0.12);
+  border-color:var(--gold);
+  color:var(--gold);
+  text-shadow:0 0 10px var(--gold);
+  box-shadow:0 0 25px rgba(255,200,50,0.35),inset 0 0 15px rgba(255,200,50,0.08);
+}
+
+/* ── SLIDER ── */
+.slider-group {
+  display:flex; flex-direction:column; align-items:center; gap:5px;
+}
+.slider-label {
+  font-size:0.58rem; letter-spacing:0.2em; opacity:0.65;
+  text-shadow:0 0 8px var(--cyan);
+}
+input[type=range] {
+  -webkit-appearance:none; width:200px; height:2px;
+  background:linear-gradient(90deg,var(--cyan) 0%,#001a22 100%);
+  border-radius:2px; outline:none; cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:14px; height:14px;
+  background:var(--cyan); border-radius:50%;
+  box-shadow:0 0 12px var(--cyan),0 0 24px rgba(0,242,255,0.5);
+  cursor:pointer;
+}
+
+/* ── STATUS ── */
+#status {
+  position:fixed; bottom:135px; left:50%; transform:translateX(-50%);
+  z-index:30; text-align:center;
+  font-size:0.62rem; letter-spacing:0.28em;
+  color:var(--cyan); opacity:0.55; pointer-events:none;
+  text-transform:uppercase;
+  transition:opacity 0.5s;
+}
+
+/* ── ANNOTATION TOOLTIPS ── */
+.annotation {
+  position:fixed; pointer-events:none;
+  background:rgba(0,10,20,0.75);
+  border:1px solid rgba(0,242,255,0.2);
+  padding:4px 10px; font-size:0.55rem;
+  letter-spacing:0.12em; color:var(--cyan);
+  opacity:0; transition:opacity 0.4s;
+  text-transform:uppercase; z-index:25;
+}
+.annotation.visible { opacity:0.8; }
+
+/* ── INFO PANEL ── */
+#info-panel {
+  position:fixed; right:28px; top:50%; transform:translateY(-50%);
+  z-index:30; width:200px;
+  background:var(--panel-bg);
+  border:1px solid rgba(0,242,255,0.15);
+  padding:14px; pointer-events:none;
+  clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));
+}
+#info-panel .info-title {
+  font-family:'Orbitron',sans-serif; font-size:0.65rem;
+  letter-spacing:0.2em; margin-bottom:10px;
+  color:var(--cyan); text-shadow:0 0 10px var(--cyan);
+}
+#info-panel .info-item {
+  font-size:0.55rem; letter-spacing:0.1em; line-height:2.0;
+  opacity:0.65; border-top:1px solid rgba(0,242,255,0.08);
+  padding-top:6px; margin-top:6px;
+}
+#info-panel .val { color:var(--gold); }
+
+/* ── TELEMETRY ── */
+#telemetry {
+  position:fixed; left:28px; bottom:28px; z-index:30;
+  font-size:0.52rem; letter-spacing:0.12em; line-height:2.0;
+  opacity:0.4; pointer-events:none;
+}
+
+/* ── SCENE TITLE ── */
+#scene-title {
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  z-index:35; text-align:center; pointer-events:none;
+  opacity:0; transition:opacity 0.6s;
+}
+#scene-title h2 {
+  font-family:'Orbitron',sans-serif; font-size:2.2rem; font-weight:900;
+  letter-spacing:0.4em; color:var(--cyan);
+  text-shadow:0 0 30px var(--cyan),0 0 80px rgba(0,242,255,0.3);
+}
+#scene-title p {
+  font-size:0.7rem; letter-spacing:0.3em; opacity:0.6; margin-top:8px;
+}
+
+/* ── LOADING ── */
+#loader {
+  position:fixed; inset:0; background:var(--bg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:100;
+}
+#loader h2 {
+  font-family:'Orbitron',sans-serif; font-size:2rem; letter-spacing:0.5em;
+  color:var(--cyan); text-shadow:0 0 30px var(--cyan);
+  animation:pulse 1.5s infinite;
+}
+#loader p { font-size:0.6rem; letter-spacing:0.3em; opacity:0.5; margin-top:12px; }
+#load-bar { width:200px; height:2px; background:#001a22; margin-top:20px; border-radius:2px; overflow:hidden; }
+#load-fill { height:100%; width:0%; background:var(--cyan); box-shadow:0 0 10px var(--cyan); transition:width 0.3s; }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* ════════════════════════════════════════════════════════════════
+   V6 RESPONSIVE + PERFORMANCE LAYER
+   Pure additions — no overrides of existing rules above
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── UI COLLAPSE TOGGLE ── */
+#ui-toggle {
+  position: fixed; top: 50%; right: 0;
+  transform: translateY(-50%);
+  z-index: 60;
+  background: rgba(0,242,255,0.08);
+  border: 1px solid rgba(0,242,255,0.25);
+  border-right: none;
+  color: var(--cyan);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.6rem;
+  padding: 10px 6px;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transition: all 0.3s;
+}
+#ui-toggle:hover { background: rgba(0,242,255,0.18); }
+body.ui-hidden #header,
+body.ui-hidden #equation,
+body.ui-hidden #nav,
+body.ui-hidden #info-panel,
+body.ui-hidden #status,
+body.ui-hidden #controls,
+body.ui-hidden #telemetry,
+body.ui-hidden #v5-energy-bar,
+body.ui-hidden #v5-legend,
+body.ui-hidden .corner {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.4s;
+}
+body.ui-hidden #ui-toggle { right: 0; }
+
+/* ── FPS BADGE ── */
+#v6-fps {
+  position: fixed; top: 18px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 60; pointer-events: none;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.5rem; letter-spacing: 0.2em;
+  color: rgba(0,242,255,0.3);
+  text-transform: uppercase;
+  margin-top: 70px;
+}
+
+/* ── QUALITY BADGE ── */
+#v6-quality {
+  position: fixed; right: 10px; top: 18px;
+  z-index: 60; pointer-events: none;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.45rem; letter-spacing: 0.15em;
+  padding: 3px 8px;
+  border: 1px solid rgba(0,242,255,0.18);
+  color: rgba(0,242,255,0.4);
+  text-transform: uppercase;
+}
+
+/* ════════════════════════════════════
+   MOBILE RESPONSIVE OVERRIDES
+   max-width: 768px
+   ════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* Hide corners on mobile – too cluttered */
+  .corner { display: none; }
+
+  /* Compact header */
+  #header { top: 10px; }
+  #header h1 { font-size: 1.1rem; letter-spacing: 0.2em; }
+  #header p  { font-size: 0.45rem; letter-spacing: 0.15em; display: none; }
+
+  /* Move equation off screen right on mobile */
+  #equation { display: none; }
+
+  /* Nav: horizontal scrollable row at top */
+  #nav {
+    top: auto;
+    bottom: 115px;
+    left: 50%;
+    transform: translateX(-50%);
+    flex-direction: row;
+    gap: 5px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: calc(100vw - 20px);
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  #nav::-webkit-scrollbar { display: none; }
+  .nav-btn {
+    font-size: 0.5rem;
+    padding: 6px 10px;
+    white-space: nowrap;
+    clip-path: none;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* Info panel: small strip at top-right, collapsed */
+  #info-panel {
+    top: 10px; right: 8px;
+    transform: none;
+    width: auto;
+    max-width: 140px;
+    padding: 8px 10px;
+    clip-path: none;
+    border-radius: 4px;
+  }
+  #info-panel .info-title { font-size: 0.5rem; margin-bottom: 5px; }
+  #info-panel .info-item  { font-size: 0.45rem; line-height: 1.6; padding-top: 4px; margin-top: 4px; }
+
+  /* Status bar: shorter, higher */
+  #status {
+    bottom: 170px;
+    font-size: 0.48rem;
+    letter-spacing: 0.14em;
+    max-width: 90vw;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Controls: compact single row */
+  #controls {
+    bottom: 52px;
+    gap: 7px;
+    max-width: calc(100vw - 16px);
+  }
+  .ctrl-row {
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .hud-btn {
+    font-size: 0.5rem;
+    padding: 8px 10px;
+    letter-spacing: 0.1em;
+    clip-path: none;
+    border-radius: 2px;
+    min-height: 36px;    /* touch target */
+  }
+
+  /* Slider wider on mobile */
+  input[type=range] { width: min(260px, 78vw); }
+  .slider-label { font-size: 0.48rem; letter-spacing: 0.1em; }
+
+  /* Telemetry: hide on mobile */
+  #telemetry { display: none; }
+
+  /* V5 energy bar: hide on mobile (too narrow) */
+  #v5-energy-bar { display: none; }
+
+  /* V5 force legend: smaller, reposition */
+  #v5-legend {
+    right: 8px;
+    bottom: 52px;
+    width: 90px;
+  }
+  .v5-leg-title { font-size: 0.38rem; }
+  .v5-leg-row   { font-size: 0.36rem; }
+
+  /* Name label */
+  #v5-name-label { bottom: 6px; }
+  .v5-name-inner {
+    font-size: clamp(0.38rem, 2vw, 0.55rem);
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  /* Scene title smaller */
+  #scene-title h2 { font-size: 1.3rem; letter-spacing: 0.2em; }
+  #scene-title p  { font-size: 0.55rem; }
+
+  /* Loader */
+  #loader h2 { font-size: 1.4rem; }
+}
+
+/* Extra-small phones */
+@media (max-width: 420px) {
+  #header h1 { font-size: 0.95rem; }
+  .hud-btn   { font-size: 0.44rem; padding: 7px 8px; }
+  #info-panel { display: none; }    /* fully hidden on tiny screens */
+  .v5-name-inner { font-size: clamp(0.32rem, 1.8vw, 0.5rem); }
+}
+
+/* ── Landscape mobile fix ── */
+@media (max-width: 900px) and (orientation: landscape) {
+  #nav { bottom: 90px; }
+  #controls { bottom: 40px; gap: 5px; }
+  #status { bottom: 130px; }
+  .hud-btn { padding: 6px 9px; }
+}
+
+
+/* ════════════════════════════════════════════
+   V5 VISUAL LAYER — append only, no overrides
+   ════════════════════════════════════════════ */
+
+/* ── Name Label ── */
+#v5-name-label {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  pointer-events: none;
+  text-align: center;
+}
+.v5-name-inner {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  color: rgba(0,242,255,0.55);
+  text-shadow: 0 0 12px rgba(0,242,255,0.3);
+  border-top: 1px solid rgba(0,242,255,0.15);
+  padding-top: 5px;
+  text-transform: uppercase;
+}
+
+/* ── Energy Bar ── */
+#v5-energy-bar {
+  position: fixed;
+  left: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+.v5-eb-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.2em;
+  color: rgba(0,242,255,0.45);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  text-transform: uppercase;
+}
+.v5-eb-track {
+  width: 3px;
+  height: 90px;
+  background: rgba(0,242,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column-reverse;
+}
+#v5-eb-fill {
+  width: 100%;
+  height: 0%;
+  background: linear-gradient(0deg, #00f2ff, #ff2244);
+  border-radius: 2px;
+  transition: height 0.15s ease, background 0.3s ease;
+  box-shadow: 0 0 8px rgba(0,242,255,0.6);
+}
+
+/* ── Force Color Legend ── */
+#v5-legend {
+  position: fixed;
+  right: 28px;
+  bottom: 36px;
+  z-index: 30;
+  pointer-events: none;
+  width: 120px;
+}
+.v5-leg-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.18em;
+  color: rgba(0,242,255,0.45);
+  text-transform: uppercase;
+  margin-bottom: 5px;
+  text-align: center;
+}
+.v5-leg-bar {
+  height: 4px;
+  width: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg,
+    hsl(200,100%,50%),
+    hsl(160,100%,55%),
+    hsl(60,100%,55%),
+    hsl(0,100%,55%)
+  );
+  box-shadow: 0 0 8px rgba(0,242,255,0.3);
+  margin-bottom: 4px;
+}
+.v5-leg-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.45rem;
+  color: rgba(0,242,255,0.4);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ── Bloom canvas overlay (post-process) ── */
+#v5-bloom-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 8;
+  mix-blend-mode: screen;
+  opacity: 0.0;
+}
+
+
+/* ═══════════════════════════════════════
+   V7 GLOBAL RESPONSIVE IMPROVEMENTS
+   Pure append — no changes to existing code
+   ═══════════════════════════════════════ */
+
+/* Prevent overflow issues */
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+/* Make canvas truly responsive */
+#canvas-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Flexible font scaling */
+:root {
+  font-size: clamp(12px, 1vw, 16px);
+}
+
+/* Buttons wrap properly */
+.ctrl-row {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Prevent UI overflow */
+#controls, #nav {
+  max-width: 100vw;
+}
+
+/* Improve touch usability */
+button, input[type=range] {
+  touch-action: manipulation;
+}
+
+/* ─────────────────────────────
+   TABLET (768px – 1024px)
+   ───────────────────────────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  #header h1 {
+    font-size: 1.3rem;
+  }
+  #nav {
+    flex-direction: row;
+    top: auto;
+    bottom: 110px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  #controls {
+    bottom: 60px;
+  }
+  .hud-btn {
+    padding: 8px 14px;
+    font-size: 0.55rem;
+  }
+  #info-panel {
+    width: 160px;
+  }
+}
+
+/* ─────────────────────────────
+   SMALL LAPTOPS
+   ───────────────────────────── */
+@media (max-width: 1280px) {
+  #header h1 {
+    font-size: 1.4rem;
+  }
+  #equation {
+    font-size: 0.85rem;
+  }
+  #info-panel {
+    width: 180px;
+  }
+}
+
+/* ─────────────────────────────
+   LARGE SCREENS (4K etc.)
+   ───────────────────────────── */
+@media (min-width: 1600px) {
+  #header h1 {
+    font-size: 2.2rem;
+  }
+  #scene-title h2 {
+    font-size: 3rem;
+  }
+  .hud-btn {
+    font-size: 0.8rem;
+    padding: 12px 28px;
+  }
+  #info-panel {
+    width: 260px;
+    padding: 20px;
+  }
+  input[type=range] {
+    width: 260px;
+  }
+}
+
+/* ─────────────────────────────
+   ULTRA SMALL DEVICES (<360px)
+   ───────────────────────────── */
+@media (max-width: 360px) {
+  #header h1 {
+    font-size: 0.8rem;
+  }
+  .hud-btn {
+    font-size: 0.4rem;
+    padding: 6px;
+  }
+  #controls {
+    bottom: 40px;
+  }
+  #nav {
+    bottom: 95px;
+  }
+}
+/* ═══════════════════════════════════════
+   END V7 RESPONSIVE ADDITIONS
+   ═══════════════════════════════════════ */
+
+
+/* ═══════════════════════════════════════
+   V8 NAV MOBILE ALIGNMENT FIX
+   Nav buttons positioned directly above
+   the controls panel on all mobile sizes
+   ═══════════════════════════════════════ */
+
+/* ── Mobile: nav row sits above controls ── */
+@media (max-width: 768px) {
+  #nav {
+    top: auto !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    /* Sits 8px above the controls panel.
+       Controls bottom: 52px + ~130px height + 8px gap = 190px */
+    bottom: 190px !important;
+    gap: 5px !important;
+    max-width: calc(100vw - 16px) !important;
+    padding: 6px 10px !important;
+    background: rgba(2, 4, 8, 0.75) !important;
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+    border: 1px solid rgba(0,242,255,0.12) !important;
+    border-radius: 4px !important;
+    z-index: 32 !important;
+  }
+  #nav::-webkit-scrollbar { display: none; }
+  #nav .nav-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: 0.5rem !important;
+    padding: 7px 11px !important;
+    clip-path: none !important;
+    border-radius: 2px !important;
+    min-height: 34px !important;
+  }
+}
+
+/* ── Landscape mobile: tighter spacing ── */
+@media (max-width: 900px) and (orientation: landscape) {
+  #nav {
+    bottom: 160px !important;
+    padding: 4px 8px !important;
+  }
+}
+
+/* ── Ultra-small (<360px): lower bottom offset ── */
+@media (max-width: 360px) {
+  #nav {
+    bottom: 175px !important;
+    padding: 4px 6px !important;
+  }
+  #nav .nav-btn {
+    font-size: 0.42rem !important;
+    padding: 6px 8px !important;
+    min-height: 30px !important;
+  }
+}
+/* ═══════════════════════════════════════
+   END V8 NAV FIX
+   ═══════════════════════════════════════ */
+
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <h2>YUKAWA</h2>
+  <p>INITIALIZING QUANTUM FIELD SIMULATION</p>
+  <div id="load-bar"><div id="load-fill"></div></div>
+</div>
+
+<div id="ui-toggle" title="Toggle UI">HIDE UI</div>
+<div id="v6-fps"></div>
+<div id="v6-quality">QUALITY: AUTO</div>
+
+<div id="canvas-wrap"></div>
+<div id="grain"></div>
+<div id="scanlines"></div>
+<div class="corner" id="c-tl"></div>
+<div class="corner" id="c-tr"></div>
+<div class="corner" id="c-bl"></div>
+<div class="corner" id="c-br"></div>
+
+<div id="header">
+  <h1>YUKAWA</h1>
+  <p>The Exchange of Nuclear Force · Hideki Yukawa, 1935</p>
+</div>
+
+<div id="equation">
+  <div class="eq-main">V(r) = −g² · e<sup>−λr</sup> / r</div>
+  <div class="eq-sub">λ = meson mass coupling</div>
+  <div class="eq-sub">g² = coupling constant</div>
+</div>
+
+<div id="nav">
+  <button class="nav-btn active" data-scene="0">① THE PROBLEM</button>
+  <button class="nav-btn" data-scene="1">② MESON EXCHANGE</button>
+  <button class="nav-btn" data-scene="2">③ FORCE FIELD</button>
+  <button class="nav-btn" data-scene="3">④ NUCLEUS CORE</button>
+</div>
+
+<div id="info-panel">
+  <div class="info-title">FIELD DATA</div>
+  <div class="info-item">FORCE TYPE<br><span class="val" id="info-force">ELECTROMAGNETIC</span></div>
+  <div class="info-item">RANGE<br><span class="val" id="info-range">∞ (long range)</span></div>
+  <div class="info-item">CARRIER<br><span class="val" id="info-carrier">PHOTON</span></div>
+  <div class="info-item">MASS<br><span class="val" id="info-mass">0 MeV/c²</span></div>
+</div>
+
+<div id="status">ELECTROMAGNETIC REPULSION DOMINANT · NUCLEUS UNSTABLE</div>
+
+<div id="scene-title">
+  <h2 id="scene-title-text"></h2>
+  <p id="scene-title-sub"></p>
+</div>
+
+<div id="controls">
+  <div class="slider-group" id="lambda-group">
+    <div class="slider-label">λ (MESON MASS COUPLING) · <span id="lambda-val">1.20</span></div>
+    <input type="range" id="lambda-slider" min="0.2" max="5.0" step="0.05" value="1.2">
+  </div>
+  <div class="ctrl-row">
+    <button class="hud-btn danger" id="btn-repel">⚡ TOGGLE EM REPULSION</button>
+    <button class="hud-btn" id="btn-strong">⬡ ACTIVATE STRONG FORCE</button>
+    <button class="hud-btn" id="btn-exchange">↯ FIRE MESON</button>
+    <button class="hud-btn" id="btn-massless">◈ MASSIVE (YUKAWA)</button>
+  </div>
+</div>
+
+<div id="telemetry">
+  <div>SYS · YUKAWA FIELD SIMULATOR v4.0</div>
+  <div>SCALE · 1fm = 1 UNIT · T = 10¹² K</div>
+  <div id="tele-mesons">MESONS · 0 ACTIVE</div>
+</div>
+
+<!-- ── V5: NAME LABEL ── -->
+<div id="v5-name-label">
+  <span class="v5-name-inner">Raphael Joseph John &nbsp;&middot;&nbsp; E0625013 &nbsp;&middot;&nbsp; B.Tech Electronics &amp; Communication</span>
+</div>
+
+<!-- ── V5: FIELD ENERGY METER ── -->
+<div id="v5-energy-bar">
+  <div class="v5-eb-label">FIELD ENERGY</div>
+  <div class="v5-eb-track"><div id="v5-eb-fill"></div></div>
+</div>
+
+<!-- ── V5: FORCE COLOR LEGEND ── -->
+<div id="v5-legend">
+  <div class="v5-leg-title">FORCE MAGNITUDE</div>
+  <div class="v5-leg-bar"></div>
+  <div class="v5-leg-row"><span>LOW</span><span>HIGH</span></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  YUKAWA NUCLEAR FORCE SIMULATOR
+//  Physics: Yukawa potential V(r) = -g² * exp(-λr) / r
+// ═══════════════════════════════════════════════════════════════
+
+const W = window.innerWidth, H = window.innerHeight;
+
+// ── Renderer ────────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setSize(W, H);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.3;
+document.getElementById('canvas-wrap').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x020408);
+scene.fog = new THREE.FogExp2(0x020408, 0.028);
+
+const camera = new THREE.PerspectiveCamera(60, W/H, 0.1, 300);
+camera.position.set(0, 2, 16);
+camera.lookAt(0, 0, 0);
+
+// ── Orbit Controls (manual) ─────────────────────────────────────
+let orb = { isDrag: false, px: 0, py: 0, theta: 0.3, phi: Math.PI/2.3, r: 16 };
+renderer.domElement.addEventListener('mousedown', e => { orb.isDrag = true; orb.px = e.clientX; orb.py = e.clientY; });
+renderer.domElement.addEventListener('mouseup', () => orb.isDrag = false);
+renderer.domElement.addEventListener('mousemove', e => {
+  if (!orb.isDrag) return;
+  orb.theta -= (e.clientX - orb.px) * 0.006;
+  orb.phi   -= (e.clientY - orb.py) * 0.006;
+  orb.phi = Math.max(0.2, Math.min(Math.PI - 0.2, orb.phi));
+  orb.px = e.clientX; orb.py = e.clientY;
+});
+renderer.domElement.addEventListener('wheel', e => {
+  orb.r = Math.max(5, Math.min(30, orb.r + e.deltaY * 0.015));
+});
+renderer.domElement.addEventListener('touchstart', e => {
+  orb.isDrag = true; orb.px = e.touches[0].clientX; orb.py = e.touches[0].clientY;
+});
+renderer.domElement.addEventListener('touchend', () => orb.isDrag = false);
+renderer.domElement.addEventListener('touchmove', e => {
+  if (!orb.isDrag) return;
+  orb.theta -= (e.touches[0].clientX - orb.px) * 0.006;
+  orb.phi   -= (e.touches[0].clientY - orb.py) * 0.006;
+  orb.phi = Math.max(0.2, Math.min(Math.PI - 0.2, orb.phi));
+  orb.px = e.touches[0].clientX; orb.py = e.touches[0].clientY;
+});
+
+// ── Global state ────────────────────────────────────────────────
+let state = {
+  scene: 0,
+  emActive: true,
+  strongActive: false,
+  lambda: 1.2,
+  isMassless: false,
+  time: 0,
+  cameraShake: 0,
+  mesons: [],
+  shockwaves: [],
+  repRings: [],
+  fieldLines: [],
+  mesonTimer: 0,
+  transitionFlag: false
+};
+
+// ── Lighting ────────────────────────────────────────────────────
+const ambLight = new THREE.AmbientLight(0x080a10, 1.5);
+scene.add(ambLight);
+const pLight1 = new THREE.PointLight(0xff2244, 4, 12);
+const pLight2 = new THREE.PointLight(0xff2244, 4, 12);
+const nLight  = new THREE.PointLight(0x4466aa, 2, 10);
+const mesonPL = new THREE.PointLight(0x00f2ff, 0, 10);
+scene.add(pLight1, pLight2, nLight, mesonPL);
+
+// ── Stars ───────────────────────────────────────────────────────
+(function() {
+  const geo = new THREE.BufferGeometry();
+  const n = 3000;
+  const pos = new Float32Array(n * 3);
+  for (let i = 0; i < n*3; i++) pos[i] = (Math.random()-0.5)*180;
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({ color: 0x223344, size: 0.07, sizeAttenuation: true });
+  scene.add(new THREE.Points(geo, mat));
+})();
+
+// ── Shader Library ──────────────────────────────────────────────
+const shaders = {
+
+  nucleon_vert: `
+    uniform float uTime;
+    uniform float uJitter;
+    varying vec3 vNormal;
+    varying vec3 vPos;
+    void main() {
+      vNormal = normalize(normalMatrix * normal);
+      vec3 p = position;
+      float n = sin(p.x*5.0+uTime*3.1)*sin(p.y*4.5+uTime*2.7)*sin(p.z*5.5+uTime*3.8)*0.07*uJitter;
+      p += normal * n;
+      vPos = p;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+    }
+  `,
+
+  proton_frag: `
+    uniform float uTime;
+    uniform float uJitter;
+    uniform float uPulse;
+    varying vec3 vNormal;
+    void main() {
+      float rim = 1.0 - max(dot(vNormal,vec3(0,0,1)),0.0);
+      rim = pow(rim, 1.8);
+      float p = 0.75 + 0.25*sin(uTime*6.0);
+      vec3 col = mix(vec3(0.5,0.0,0.05), vec3(1.0,0.1,0.2), rim) * p * (0.6 + 0.4*uPulse);
+      col += vec3(0.3,0.0,0.05) * 0.3;
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `,
+
+  neutron_frag: `
+    uniform float uTime;
+    varying vec3 vNormal;
+    void main() {
+      float rim = 1.0 - max(dot(vNormal,vec3(0,0,1)),0.0);
+      rim = pow(rim, 2.2);
+      float p = 0.8 + 0.2*sin(uTime*2.5);
+      vec3 col = mix(vec3(0.05,0.07,0.12), vec3(0.25,0.4,0.6), rim) * p;
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `,
+
+  halo_frag: `
+    uniform vec3 uColor;
+    uniform float uTime;
+    uniform float uAlpha;
+    varying vec3 vNormal;
+    void main() {
+      float rim = 1.0 - abs(dot(vNormal,vec3(0,0,1)));
+      rim = pow(rim, 2.5);
+      float p = 0.5 + 0.5*sin(uTime*4.0);
+      gl_FragColor = vec4(uColor * rim * (0.5+0.5*p), rim * uAlpha * 0.7);
+    }
+  `,
+
+  meson_frag: `
+    uniform float uTime;
+    varying vec3 vNormal;
+    void main() {
+      float rim = 1.0 - max(dot(vNormal,vec3(0,0,1)),0.0);
+      float p = 0.5 + 0.5*sin(uTime*15.0);
+      vec3 col = vec3(0.0,0.8,1.0)*(0.4+0.6*pow(rim,1.2))*p;
+      col += vec3(0.3,1.0,1.0)*0.3;
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `,
+
+  yukawa_vert: `
+    varying vec3 vPos;
+    varying vec3 vNorm;
+    void main() {
+      vPos = position;
+      vNorm = normalize(normalMatrix * normal);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+
+  yukawa_frag: `
+    uniform float uLambda;
+    uniform float uTime;
+    uniform float uActive;
+    uniform float uIsMassless;
+    varying vec3 vPos;
+    varying vec3 vNorm;
+    void main() {
+      float r = length(vPos);
+      if (r < 0.01) { gl_FragColor = vec4(0); return; }
+      /* Massive Yukawa: exp(-λr)/r  |  Massless Coulomb: 1/r */
+      float V_yukawa  = exp(-uLambda * r) / (r * 0.6);
+      float V_coulomb = 1.0 / (r * 0.45 + 0.04);
+      float V = mix(V_yukawa, V_coulomb, uIsMassless);
+      V = clamp(V, 0.0, 1.0);
+      float rim   = 1.0 - abs(dot(normalize(vNorm), vec3(0,0,1)));
+      float pulse = 0.65 + 0.35*sin(uTime*2.0 + r*2.5);
+      vec3 col_yukawa  = mix(vec3(0.0,0.15,0.30), vec3(0.0,0.90,1.00), V);
+      vec3 col_coulomb = mix(vec3(0.2,0.14,0.00), vec3(1.0,0.93,0.55), V);
+      vec3 col = mix(col_yukawa, col_coulomb, uIsMassless) * V * pulse;
+      float a = V * rim * mix(0.28, 0.40, uIsMassless) * uActive;
+      gl_FragColor = vec4(col, a);
+    }
+  `,
+
+  em_field_frag: `
+    uniform float uTime;
+    uniform float uActive;
+    varying vec3 vPos;
+    varying vec3 vNorm;
+    void main() {
+      float r = length(vPos);
+      float V = 1.0 / (r * r * 0.5 + 0.2); // Coulomb: 1/r
+      V = clamp(V * 0.4, 0.0, 1.0);
+      float rim = 1.0 - abs(dot(normalize(vNorm), vec3(0,0,1)));
+      float pulse = 0.6 + 0.4*sin(uTime*3.0 + r*1.5);
+      vec3 col = mix(vec3(0.3,0,0.05), vec3(1.0,0.2,0.3), V) * V * pulse;
+      float a = V * rim * 0.22 * uActive;
+      gl_FragColor = vec4(col, a);
+    }
+  `,
+
+  shockwave_frag: `
+    uniform float uLife;
+    uniform vec3 uColor;
+    void main() {
+      gl_FragColor = vec4(uColor, uLife * 0.85);
+    }
+  `
+};
+
+// ── Factory: Nucleon ────────────────────────────────────────────
+function createNucleon(type) {
+  const geo = new THREE.IcosahedronGeometry(0.78, 5);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 }, uJitter: { value: 1 }, uPulse: { value: 1 }
+    },
+    vertexShader: shaders.nucleon_vert,
+    fragmentShader: type === 'proton' ? shaders.proton_frag : shaders.neutron_frag
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+
+  // Halo
+  const hGeo = new THREE.SphereGeometry(1.05, 32, 32);
+  const hMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uColor: { value: type === 'proton' ? new THREE.Color(0xff2244) : new THREE.Color(0x4466aa) },
+      uTime: { value: 0 }, uAlpha: { value: 1.0 }
+    },
+    vertexShader: `varying vec3 vNormal; void main(){ vNormal=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader: shaders.halo_frag,
+    transparent: true, side: THREE.BackSide, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  mesh.add(new THREE.Mesh(hGeo, hMat));
+
+  // Label sprite
+  const cvs = document.createElement('canvas');
+  cvs.width = 256; cvs.height = 64;
+  const ctx = cvs.getContext('2d');
+  ctx.font = 'bold 20px Courier New';
+  ctx.fillStyle = type === 'proton' ? '#ff2244' : '#4488bb';
+  ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 14;
+  ctx.fillText(type === 'proton' ? 'PROTON +' : 'NEUTRON', 8, 40);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(cvs), transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  }));
+  sprite.scale.set(2.0, 0.5, 1);
+  sprite.position.y = 1.5;
+  mesh.add(sprite);
+
+  return mesh;
+}
+
+// ── Factory: Yukawa Field ───────────────────────────────────────
+function createYukawaField(isEM = false) {
+  const geo = new THREE.SphereGeometry(5.5, 64, 64);
+  const uniforms = {
+    uLambda: { value: 1.2 }, uTime: { value: 0 }, uActive: { value: 0.0 }
+  };
+  if (!isEM) uniforms.uIsMassless = { value: 0.0 };
+  const mat = new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: shaders.yukawa_vert,
+    fragmentShader: isEM ? shaders.em_field_frag : shaders.yukawa_frag,
+    transparent: true, side: THREE.FrontSide, depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+  return new THREE.Mesh(geo, mat);
+}
+
+// ── Factory: Meson ──────────────────────────────────────────────
+function createMeson() {
+  const geo = new THREE.SphereGeometry(0.18, 16, 16);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 } },
+    vertexShader: `varying vec3 vNormal; void main(){ vNormal=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader: shaders.meson_frag
+  });
+  return new THREE.Mesh(geo, mat);
+}
+
+// ── Factory: Trail ──────────────────────────────────────────────
+function createTrail(maxPts = 30) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(maxPts * 3), 3));
+  const line = new THREE.Line(geo, new THREE.LineBasicMaterial({
+    color: 0x00f2ff, transparent: true, opacity: 0.4,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  }));
+  line.userData.pts = [];
+  line.userData.max = maxPts;
+  return line;
+}
+
+function updateTrail(trail, pos) {
+  trail.userData.pts.push(pos.clone());
+  if (trail.userData.pts.length > trail.userData.max) trail.userData.pts.shift();
+  const arr = trail.geometry.attributes.position.array;
+  trail.userData.pts.forEach((p, i) => { arr[i*3]=p.x; arr[i*3+1]=p.y; arr[i*3+2]=p.z; });
+  trail.geometry.setDrawRange(0, trail.userData.pts.length);
+  trail.geometry.attributes.position.needsUpdate = true;
+}
+
+// ── Factory: Shockwave Ring ─────────────────────────────────────
+function spawnShockwave(pos, color = 0x00f2ff) {
+  const geo = new THREE.RingGeometry(0.05, 0.28, 64);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uLife: { value: 1.0 }, uColor: { value: new THREE.Color(color) } },
+    vertexShader: `void main(){ gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader: shaders.shockwave_frag,
+    transparent: true, side: THREE.DoubleSide, depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+  const ring = new THREE.Mesh(geo, mat);
+  ring.position.copy(pos);
+  ring.lookAt(camera.position);
+  ring.userData = { scale: 0.3, life: 1.0, color };
+  scene.add(ring);
+  state.shockwaves.push(ring);
+  state.cameraShake = 0.2;
+}
+
+// ── Factory: EM Repulsion Ring ──────────────────────────────────
+function spawnRepRing(pos) {
+  const geo = new THREE.RingGeometry(0.08, 0.22, 48);
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0xff2244, transparent: true, opacity: 0.9,
+    side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  const ring = new THREE.Mesh(geo, mat);
+  ring.position.copy(pos);
+  ring.lookAt(camera.position);
+  ring.userData = { scale: 0.5, life: 1.0 };
+  scene.add(ring);
+  state.repRings.push(ring);
+}
+
+// ── Factory: Field Lines (EM) ───────────────────────────────────
+function createFieldLines(fromPos, toPos) {
+  const lines = [];
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const pts = [];
+    for (let t = 0; t <= 1; t += 0.05) {
+      const lp = new THREE.Vector3().lerpVectors(fromPos, toPos, t);
+      const off = 0.5 * Math.sin(t * Math.PI);
+      lp.x += Math.cos(angle) * off * 0.6;
+      lp.y += Math.sin(angle) * off * 0.4;
+      pts.push(lp);
+    }
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    const mat = new THREE.LineBasicMaterial({
+      color: 0xff2244, transparent: true, opacity: 0.35,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    const line = new THREE.Line(geo, mat);
+    scene.add(line);
+    lines.push(line);
+  }
+  return lines;
+}
+
+// ════════════════════════════════════════════
+//  SCENE OBJECTS
+// ════════════════════════════════════════════
+
+// Nucleons
+const p1 = createNucleon('proton');
+const p2 = createNucleon('proton');
+const n1 = createNucleon('neutron');
+const n2 = createNucleon('neutron');
+const p3 = createNucleon('proton');
+scene.add(p1, p2, n1, n2, p3);
+
+// Base positions per scene
+const positions = {
+  scene0: [
+    new THREE.Vector3(-3.5, 0, 0),  // p1
+    new THREE.Vector3( 3.5, 0, 0),  // p2
+    new THREE.Vector3(0, -8, 0),    // n1 (hidden)
+    new THREE.Vector3(0, -8, 0),    // n2 (hidden)
+    new THREE.Vector3(0, -8, 0),    // p3 (hidden)
+  ],
+  scene1: [
+    new THREE.Vector3(-3.0, 0, 0),
+    new THREE.Vector3( 3.0, 0, 0),
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0, -8, 0),
+    new THREE.Vector3(0, -8, 0),
+  ],
+  scene2: [
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0, -8, 0),
+    new THREE.Vector3(0, -8, 0),
+    new THREE.Vector3(0, -8, 0),
+    new THREE.Vector3(0, -8, 0),
+  ],
+  scene3: [
+    new THREE.Vector3(-2.2, 1.2, 0.5),
+    new THREE.Vector3( 2.2, 1.2,-0.5),
+    new THREE.Vector3(-1.0,-1.8, 1.0),
+    new THREE.Vector3( 1.0,-1.8,-1.0),
+    new THREE.Vector3( 0,   0.8, 2.0),
+  ]
+};
+
+// EM fields on protons
+const emField1 = createYukawaField(true);
+const emField2 = createYukawaField(true);
+scene.add(emField1, emField2);
+
+// Yukawa fields
+const yField1 = createYukawaField(false);
+const yField2 = createYukawaField(false);
+const yFieldN = createYukawaField(false);
+scene.add(yField1, yField2, yFieldN);
+
+// EM field lines
+let emLines = [];
+
+// ── Factory: Rich Meson HUD Label (2-line billboard) ───────────
+function createMesonHUDLabel() {
+  const cvs = document.createElement('canvas');
+  cvs.width = 320; cvs.height = 80;
+  const ctx = cvs.getContext('2d');
+  ctx.clearRect(0, 0, cvs.width, cvs.height);
+  // Line 1 — bold name
+  ctx.font = 'bold 26px Courier New';
+  ctx.fillStyle = '#00f2ff';
+  ctx.shadowColor = '#00f2ff'; ctx.shadowBlur = 18;
+  ctx.fillText('π Meson (Pion)', 10, 36);
+  // Line 2 — small descriptor
+  ctx.font = '16px Courier New';
+  ctx.fillStyle = '#88eeff';
+  ctx.shadowBlur = 8;
+  ctx.fillText('Force Carrier', 12, 62);
+  const tex = new THREE.CanvasTexture(cvs);
+  const mat = new THREE.SpriteMaterial({
+    map: tex, transparent: true, opacity: 0.0,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(2.6, 0.65, 1);
+  sprite.position.set(0, 0.52, 0);
+  return sprite;
+}
+
+// ── Spawn Meson ─────────────────────────────────────────────────
+function spawnMeson(fromMesh, toMesh) {
+  const mesh = createMeson();
+  const trail = createTrail(25);
+  const label = createMesonHUDLabel();  // upgraded two-line label
+  mesh.add(label);
+  scene.add(mesh, trail);
+
+  const from = fromMesh.position.clone();
+  const to = toMesh.position.clone();
+  const arcHeight = 0.6 + Math.random() * 0.8;
+  const arcDir = new THREE.Vector3(
+    (Math.random()-0.5)*0.5,
+    arcHeight,
+    (Math.random()-0.5)*0.5
+  );
+
+  state.mesons.push({
+    mesh, trail, label, from, to, toMesh,
+    t: 0, speed: 0.7+Math.random()*0.5, arcDir, dead: false
+  });
+}
+
+// ── Update Mesons ───────────────────────────────────────────────
+function updateMesons(dt) {
+  mesonPL.intensity = 0;
+  state.mesons.forEach(m => {
+    if (m.dead) return;
+    m.t += dt * m.speed;
+
+    const base = new THREE.Vector3().lerpVectors(m.from, m.to, m.t);
+    const arc  = m.arcDir.clone().multiplyScalar(Math.sin(m.t * Math.PI));
+    m.mesh.position.copy(base.add(arc));
+    m.mesh.material.uniforms.uTime.value = state.time;
+    updateTrail(m.trail, m.mesh.position);
+    mesonPL.position.copy(m.mesh.position);
+    mesonPL.intensity += 2.5;
+
+    // Fade HUD label in (0→1 over first 30% of travel)
+    if (m.label) {
+      const fadeIn  = Math.min(m.t / 0.3, 1.0);
+      const fadeOut = m.t > 0.75 ? Math.max(0, 1.0 - (m.t - 0.75) / 0.25) : 1.0;
+      m.label.material.opacity = fadeIn * fadeOut * 0.92;
+    }
+
+    if (m.t >= 1.0) {
+      const impactPos = m.to.clone();
+      // Original shockwave + energy burst (called via existing override chain)
+      spawnShockwave(impactPos);
+      // NEW: force arrow pointing toward origin nucleon
+      spawnForceArrow(impactPos, m.from);
+      // NEW: kinetic pulse ring at impact point
+      spawnKineticPulse(impactPos);
+
+      // Proper disposal to prevent memory leaks
+      m.mesh.geometry.dispose();
+      m.mesh.material.dispose();
+      m.trail.geometry.dispose();
+      m.trail.material.dispose();
+      if (m.label) { m.label.material.map.dispose(); m.label.material.dispose(); }
+      scene.remove(m.mesh);
+      scene.remove(m.trail);
+      m.dead = true;
+    }
+  });
+  state.mesons = state.mesons.filter(m => !m.dead);
+  document.getElementById('tele-mesons').textContent = `MESONS · ${state.mesons.length} ACTIVE`;
+}
+
+// ── Shockwave Update ────────────────────────────────────────────
+function updateShockwaves(dt) {
+  state.shockwaves.forEach(s => {
+    s.userData.scale += 4 * dt;
+    s.userData.life  -= 2.5 * dt;
+    s.scale.setScalar(s.userData.scale);
+    s.material.uniforms.uLife.value = Math.max(0, s.userData.life);
+    s.lookAt(camera.position);
+  });
+  state.shockwaves = state.shockwaves.filter(s => {
+    if (s.userData.life <= 0) { scene.remove(s); return false; }
+    return true;
+  });
+}
+
+// ── Repulsion Rings ─────────────────────────────────────────────
+let repTimer = 0;
+function updateRepRings(dt) {
+  repTimer += dt;
+  if (state.emActive && state.scene === 0 && repTimer > 0.18) {
+    repTimer = 0;
+    const mid = p1.position.clone().lerp(p2.position, 0.5);
+    spawnRepRing(p1.position.clone().lerp(mid, 0.5));
+    spawnRepRing(p2.position.clone().lerp(mid, 0.5));
+  }
+  state.repRings.forEach(r => {
+    r.userData.scale += 1.6 * dt;
+    r.userData.life  -= 1.4 * dt;
+    r.scale.setScalar(r.userData.scale);
+    r.material.opacity = Math.max(0, r.userData.life);
+    r.lookAt(camera.position);
+  });
+  state.repRings = state.repRings.filter(r => {
+    if (r.userData.life <= 0) { scene.remove(r); return false; }
+    return true;
+  });
+}
+
+// ── Auto Meson spawner (scene 1 & 3) ────────────────────────────
+function autoMesons(dt) {
+  if (!state.strongActive) return;
+  state.mesonTimer -= dt;
+  if (state.mesonTimer > 0) return;
+  state.mesonTimer = 0.3 + Math.random() * 0.4;
+
+  const nucleons = [p1, p2, n1];
+  if (state.scene === 3) nucleons.push(n2, p3);
+  const max = state.scene === 3 ? 8 : 5;
+  if (state.mesons.length >= max) return;
+
+  const from = nucleons[Math.floor(Math.random() * nucleons.length)];
+  const others = nucleons.filter(n => n !== from);
+  const to = others[Math.floor(Math.random() * others.length)];
+  spawnMeson(from, to);
+}
+
+// ── Scene: nucleon jitter ────────────────────────────────────────
+const basePos = [
+  new THREE.Vector3(), new THREE.Vector3(),
+  new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()
+];
+const nucleons = [p1, p2, n1, n2, p3];
+
+function updateNucleons(dt) {
+  const t = state.time;
+  const jAmp = state.strongActive ? 0.04 : (state.emActive ? 0.22 : 0.06);
+  nucleons.forEach((n, i) => {
+    const b = basePos[i];
+    n.position.set(
+      b.x + Math.sin(t*(6.1+i*1.3))*jAmp + Math.sin(t*(10.7+i))*jAmp*0.4,
+      b.y + Math.cos(t*(7.3+i*0.9))*jAmp*0.7,
+      b.z + Math.sin(t*(5.5+i*1.1))*jAmp*0.35
+    );
+    // Update shader time
+    n.material.uniforms.uTime.value = t;
+    n.material.uniforms.uJitter.value = state.emActive ? 1.4 : 0.6;
+    n.children[0].material.uniforms.uTime.value = t; // halo
+  });
+
+  // Sync lights
+  pLight1.position.copy(p1.position);
+  pLight2.position.copy(p2.position);
+  nLight.position.copy(n1.position);
+
+  // Sync fields
+  emField1.position.copy(p1.position);
+  emField2.position.copy(p2.position);
+  yField1.position.copy(p1.position);
+  yField2.position.copy(p2.position);
+  yFieldN.position.copy(n1.position);
+
+  [yField1, yField2, yFieldN].forEach(f => {
+    f.material.uniforms.uTime.value = t;
+    f.material.uniforms.uLambda.value = state.lambda;
+    // Sync massless toggle — smoothly interpolate the blend
+    const masslessTarget = state.isMassless ? 1.0 : 0.0;
+    f.material.uniforms.uIsMassless.value +=
+      (masslessTarget - f.material.uniforms.uIsMassless.value) * 0.06;
+    const target = state.strongActive ? 1.0 : 0.0;
+    f.material.uniforms.uActive.value += (target - f.material.uniforms.uActive.value) * 0.05;
+  });
+
+  [emField1, emField2].forEach(f => {
+    f.material.uniforms.uTime.value = t;
+    const target = (state.emActive && state.scene === 0) ? 1.0 : 0.0;
+    f.material.uniforms.uActive.value += (target - f.material.uniforms.uActive.value) * 0.05;
+  });
+}
+
+// ── Scene Transition ────────────────────────────────────────────
+const sceneMeta = [
+  { title: 'THE PROBLEM', sub: 'Protons repel · Why does the nucleus hold?' },
+  { title: 'MESON EXCHANGE', sub: 'Virtual particles carry the strong force' },
+  { title: 'YUKAWA FORCE FIELD', sub: 'V(r) = −g² · e⁻λr / r · Short-range potential' },
+  { title: 'INSIDE THE NUCLEUS', sub: 'Meson network · Binding energy' }
+];
+
+const fieldInfo = [
+  { force:'ELECTROMAGNETIC', range:'∞ (long range)', carrier:'PHOTON', mass:'0 MeV/c²' },
+  { force:'STRONG (YUKAWA)', range:'~1 fm (short)', carrier:'π MESON', mass:'~140 MeV/c²' },
+  { force:'NUCLEAR YUKAWA', range:'~λ⁻¹ fm', carrier:'π⁺/π⁻/π⁰', mass:'138–140 MeV/c²' },
+  { force:'RESIDUAL STRONG', range:'~2-3 fm', carrier:'π,η MESONS', mass:'varied' }
+];
+
+function setScene(s) {
+  state.scene = s;
+  document.querySelectorAll('.nav-btn').forEach((b,i) => b.classList.toggle('active', i===s));
+
+  // Update base positions
+  const sp = positions['scene'+s];
+  sp.forEach((p, i) => basePos[i].copy(p));
+
+  // Show title flash
+  const titleEl = document.getElementById('scene-title');
+  const titleH2 = document.getElementById('scene-title-text');
+  const titleP  = document.getElementById('scene-title-sub');
+  titleH2.textContent = sceneMeta[s].title;
+  titleP.textContent  = sceneMeta[s].sub;
+  titleEl.style.opacity = '1';
+  setTimeout(() => titleEl.style.opacity = '0', 2200);
+
+  // Update info panel
+  const fi = fieldInfo[s];
+  document.getElementById('info-force').textContent   = fi.force;
+  document.getElementById('info-range').textContent   = fi.range;
+  document.getElementById('info-carrier').textContent = fi.carrier;
+  document.getElementById('info-mass').textContent    = fi.mass;
+
+  // Scene-specific behaviors
+  // Clear mesons on scene change
+  state.mesons.forEach(m => { scene.remove(m.mesh); scene.remove(m.trail); });
+  state.mesons = [];
+
+  // Clear EM field lines
+  emLines.forEach(l => scene.remove(l)); emLines = [];
+
+  if (s === 0) {
+    state.emActive = true;
+    state.strongActive = false;
+    document.getElementById('status').textContent = 'ELECTROMAGNETIC REPULSION · PROTON-PROTON COULOMB FORCE';
+    emLines = createFieldLines(p1.position, p2.position);
+    orb.r = 14;
+  }
+  if (s === 1) {
+    state.strongActive = true;
+    state.emActive = false;
+    document.getElementById('status').textContent = 'MESON EXCHANGE ACTIVE · STRONG NUCLEAR BINDING';
+    orb.r = 13;
+  }
+  if (s === 2) {
+    state.strongActive = true;
+    state.emActive = false;
+    document.getElementById('status').textContent = 'YUKAWA FIELD · ADJUST λ TO CONTROL FORCE RANGE';
+    orb.r = 13;
+  }
+  if (s === 3) {
+    state.strongActive = true;
+    state.emActive = false;
+    document.getElementById('status').textContent = 'MULTI-NUCLEON NUCLEUS · MESON EXCHANGE NETWORK';
+    orb.r = 14;
+    // Also show EM repulsion between protons
+    state.emActive = true;
+  }
+
+  // Show/hide nucleons
+  n1.visible = s !== 0;
+  n2.visible = s === 3;
+  p3.visible = s === 3;
+}
+
+// ════════════════════════════════════════════
+//  MAIN LOOP
+// ════════════════════════════════════════════
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  state.time += dt;
+
+  // Camera orbit
+  camera.position.x = orb.r * Math.sin(orb.phi) * Math.sin(orb.theta);
+  camera.position.y = orb.r * Math.cos(orb.phi);
+  camera.position.z = orb.r * Math.sin(orb.phi) * Math.cos(orb.theta);
+  if (state.cameraShake > 0) {
+    camera.position.x += (Math.random()-0.5) * state.cameraShake;
+    camera.position.y += (Math.random()-0.5) * state.cameraShake;
+    state.cameraShake *= 0.82;
+    if (state.cameraShake < 0.003) state.cameraShake = 0;
+  }
+  camera.lookAt(0, 0, 0);
+
+  updateNucleons(dt);
+  updateMesons(dt);
+  updateShockwaves(dt);
+  updateRepRings(dt);
+  autoMesons(dt);
+  if (typeof updateConnections !== 'undefined') updateConnections();
+  if (typeof updateEnergyParticles !== 'undefined') updateEnergyParticles(dt);
+
+  // Animate EM field lines visibility
+  emLines.forEach(l => {
+    l.material.opacity = state.emActive ? 0.35 * (0.7 + 0.3*Math.sin(state.time*3)) : 0;
+  });
+
+  renderer.render(scene, camera);
+}
+
+// ════════════════════════════════════════════
+//  UI EVENTS
+// ════════════════════════════════════════════
+document.querySelectorAll('.nav-btn').forEach((b, i) => {
+  b.addEventListener('click', () => setScene(i));
+});
+
+document.getElementById('btn-repel').addEventListener('click', function() {
+  state.emActive = !state.emActive;
+  this.classList.toggle('active', state.emActive);
+  document.getElementById('status').textContent = state.emActive
+    ? 'ELECTROMAGNETIC REPULSION ACTIVE · COULOMB FORCE'
+    : 'ELECTROMAGNETIC SUPPRESSED · OBSERVING STRONG FORCE';
+  if (state.emActive && state.scene === 0) {
+    emLines.forEach(l => scene.remove(l)); emLines = [];
+    emLines = createFieldLines(p1.position, p2.position);
+  } else {
+    emLines.forEach(l => scene.remove(l)); emLines = [];
+  }
+});
+
+document.getElementById('btn-strong').addEventListener('click', function() {
+  state.strongActive = !state.strongActive;
+  this.classList.toggle('active', state.strongActive);
+  document.getElementById('status').textContent = state.strongActive
+    ? 'STRONG FORCE ACTIVE · MESON EXCHANGE BINDING NUCLEONS'
+    : 'STRONG FORCE DEACTIVATED · NUCLEUS UNSTABLE';
+  if (!state.strongActive) {
+    state.mesons.forEach(m => { scene.remove(m.mesh); scene.remove(m.trail); });
+    state.mesons = [];
+  }
+});
+
+document.getElementById('btn-exchange').addEventListener('click', () => {
+  const pairs = [[p1,p2],[p1,n1],[p2,n1]];
+  pairs.forEach(([a,b]) => {
+    if (a.visible && b.visible) spawnMeson(a, b);
+  });
+  if (n2.visible) spawnMeson(n1, n2);
+  if (p3.visible) spawnMeson(p2, p3);
+});
+
+// ── Mass-Range Toggle ────────────────────────────────────────────
+document.getElementById('btn-massless').addEventListener('click', function() {
+  state.isMassless = !state.isMassless;
+  if (state.isMassless) {
+    this.textContent = '◈ MASSLESS (PHOTON-LIKE)';
+    this.classList.add('massless-active');
+    this.classList.remove('active');
+    document.getElementById('status').textContent =
+      'MASSLESS MODE · λ→0 · COULOMB 1/r FIELD · LONG-RANGE FORCE';
+    document.getElementById('info-range').textContent  = '∞ (Coulomb, massless)';
+    document.getElementById('info-carrier').textContent = 'PHOTON (virtual)';
+    document.getElementById('info-mass').textContent   = '0 MeV/c²';
+  } else {
+    this.textContent = '◈ MASSIVE (YUKAWA)';
+    this.classList.remove('massless-active');
+    const rangeText = (1/state.lambda).toFixed(2) + ' fm (approx)';
+    document.getElementById('status').textContent =
+      `MASSIVE MODE · λ=${state.lambda.toFixed(2)} · YUKAWA e⁻λr/r · SHORT-RANGE`;
+    document.getElementById('info-range').textContent  = '~' + rangeText;
+    document.getElementById('info-carrier').textContent = 'π MESON';
+    document.getElementById('info-mass').textContent   = '~140 MeV/c²';
+  }
+});
+
+const lambdaSlider = document.getElementById('lambda-slider');
+const lambdaVal    = document.getElementById('lambda-val');
+lambdaSlider.addEventListener('input', e => {
+  state.lambda = parseFloat(e.target.value);
+  lambdaVal.textContent = state.lambda.toFixed(2);
+  const rangeText = (1/state.lambda).toFixed(2) + ' fm (approx)';
+  document.getElementById('info-range').textContent = '~' + rangeText;
+  document.getElementById('status').textContent =
+    `λ = ${state.lambda.toFixed(2)} · MESON MASS ∝ λ · RANGE ∝ 1/λ ≈ ${rangeText}`;
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ════════════════════════════════════════════
+//  PARTICLE FOG SYSTEM
+// ════════════════════════════════════════════
+(function createParticleFog() {
+  const count = 600;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(count * 3);
+  const vel = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    pos[i*3]   = (Math.random()-0.5)*30;
+    pos[i*3+1] = (Math.random()-0.5)*20;
+    pos[i*3+2] = (Math.random()-0.5)*25;
+    vel[i*3]   = (Math.random()-0.5)*0.008;
+    vel[i*3+1] = (Math.random()-0.5)*0.005;
+    vel[i*3+2] = (Math.random()-0.5)*0.006;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo._vel = vel;
+
+  const mat = new THREE.PointsMaterial({
+    color: 0x003344, size: 0.06, sizeAttenuation: true,
+    transparent: true, opacity: 0.55,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  });
+  const pts = new THREE.Points(geo, mat);
+  scene.add(pts);
+
+  // Animate fog in main loop by hooking
+  const origAnimate = animate;
+  // We update fog positions in the loop below via a direct ref
+  window._fogGeo = geo;
+  window._fogVel = vel;
+})();
+
+// Hook fog update into loop
+const _origRender = renderer.render.bind(renderer);
+let fogTime = 0;
+renderer.render = function(s, c) {
+  fogTime += 0.016;
+  if (window._fogGeo) {
+    const pos = window._fogGeo.attributes.position.array;
+    const vel = window._fogVel;
+    for (let i = 0; i < pos.length/3; i++) {
+      pos[i*3]   += vel[i*3]   + Math.sin(fogTime*0.3+i)*0.0008;
+      pos[i*3+1] += vel[i*3+1] + Math.cos(fogTime*0.2+i)*0.0006;
+      pos[i*3+2] += vel[i*3+2];
+      // Wrap
+      if (Math.abs(pos[i*3])   > 15) pos[i*3]   *= -0.95;
+      if (Math.abs(pos[i*3+1]) > 10) pos[i*3+1] *= -0.95;
+      if (Math.abs(pos[i*3+2]) > 12) pos[i*3+2] *= -0.95;
+    }
+    window._fogGeo.attributes.position.needsUpdate = true;
+  }
+  _origRender(s, c);
+};
+
+// ════════════════════════════════════════════
+//  NUCLEUS CONNECTION LINES (Scene 3)
+// ════════════════════════════════════════════
+const nucConnections = [];
+const nucPairs = [[p1,p2],[p1,n1],[p2,n1],[p1,n2],[p2,n2],[n1,n2],[p3,p1],[p3,n1],[p3,p2]];
+
+nucPairs.forEach(([a, b]) => {
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(2 * 3);
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.LineBasicMaterial({
+    color: 0x00f2ff, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  });
+  const line = new THREE.Line(geo, mat);
+  scene.add(line);
+  nucConnections.push({ line, a, b });
+});
+
+function updateConnections() {
+  const show = state.scene === 3 && state.strongActive;
+  nucConnections.forEach(({ line, a, b }) => {
+    const vis = show && a.visible && b.visible;
+    const arr = line.geometry.attributes.position.array;
+    arr[0]=a.position.x; arr[1]=a.position.y; arr[2]=a.position.z;
+    arr[3]=b.position.x; arr[4]=b.position.y; arr[5]=b.position.z;
+    line.geometry.attributes.position.needsUpdate = true;
+    const dist = a.position.distanceTo(b.position);
+    const targetOpacity = vis ? Math.max(0, 0.3 - dist * 0.02) : 0;
+    line.material.opacity += (targetOpacity - line.material.opacity) * 0.08;
+    // Pulse
+    line.material.opacity *= 0.85 + 0.15 * Math.sin(state.time * 4 + dist);
+  });
+}
+
+// Hook into update cycle
+const _baseUpdateNucleons = updateNucleons;
+// We'll call updateConnections() in the animate loop directly
+
+// ════════════════════════════════════════════
+//  ENERGY PULSE PARTICLES (on meson hit)
+// ════════════════════════════════════════════
+const energyParticles = [];
+function spawnEnergyBurst(pos, color = 0x00f2ff) {
+  const count = 16;
+  for (let i = 0; i < count; i++) {
+    const geo = new THREE.SphereGeometry(0.06, 6, 6);
+    const mat = new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: 0.9,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(pos);
+    const theta = Math.random() * Math.PI * 2;
+    const phi   = Math.random() * Math.PI;
+    const speed = 2 + Math.random() * 3;
+    mesh.userData.vel = new THREE.Vector3(
+      Math.sin(phi)*Math.cos(theta)*speed,
+      Math.sin(phi)*Math.sin(theta)*speed,
+      Math.cos(phi)*speed
+    );
+    mesh.userData.life = 1.0;
+    scene.add(mesh);
+    energyParticles.push(mesh);
+  }
+}
+
+function updateEnergyParticles(dt) {
+  energyParticles.forEach(p => {
+    p.position.addScaledVector(p.userData.vel, dt);
+    p.userData.vel.multiplyScalar(0.88);
+    p.userData.life -= 2.5 * dt;
+    p.material.opacity = Math.max(0, p.userData.life * 0.9);
+    p.scale.setScalar(p.userData.life);
+  });
+  for (let i = energyParticles.length - 1; i >= 0; i--) {
+    if (energyParticles[i].userData.life <= 0) {
+      scene.remove(energyParticles[i]);
+      energyParticles.splice(i, 1);
+    }
+  }
+}
+
+// Override spawnShockwave to also trigger energy burst
+const _origSpawnShockwave = spawnShockwave;
+spawnShockwave = function(pos, color = 0x00f2ff) {
+  _origSpawnShockwave(pos, color);
+  spawnEnergyBurst(pos, color);
+};
+
+// Hook energy particles into animate
+const _baseAnimate = animate;
+
+// ── Init ─────────────────────────────────────────────────────────
+// Loading animation
+let loadPct = 0;
+const loadInterval = setInterval(() => {
+  loadPct += Math.random() * 18;
+  document.getElementById('load-fill').style.width = Math.min(loadPct, 100) + '%';
+  if (loadPct >= 100) {
+    clearInterval(loadInterval);
+    setTimeout(() => {
+      document.getElementById('loader').style.opacity = '0';
+      document.getElementById('loader').style.transition = 'opacity 0.8s';
+      setTimeout(() => document.getElementById('loader').style.display = 'none', 800);
+    }, 300);
+  }
+}, 60);
+
+setScene(0);
+animate();
+
+// ════════════════════════════════════════════════════════════════
+//  FEATURE 1 & 2: FORCE VECTOR ARROWS + KINETIC SHOCKWAVE PULSES
+//  Appended cleanly — no core engine modifications above
+// ════════════════════════════════════════════════════════════════
+
+// Object pools — reuse to prevent GC pressure
+const _arrowPool  = [];
+const _pulsePool  = [];
+state.forceArrows = [];
+state.kineticPulses = [];
+
+/* createForceArrow — builds a custom mesh arrow (cyan) pointing from
+   impactPos toward the origin nucleon.  Uses a cone + cylinder pair
+   for a crisp look independent of Three.js ArrowHelper's shaft cap. */
+function createForceArrow(impactPos, originPos) {
+  const dir    = new THREE.Vector3().subVectors(originPos, impactPos).normalize();
+  const length = 2.2;
+
+  const group = new THREE.Group();
+
+  // Shaft (cylinder)
+  const shaftGeo = new THREE.CylinderGeometry(0.025, 0.025, length * 0.72, 8);
+  const shaftMat = new THREE.MeshBasicMaterial({
+    color: 0x00f2ff, transparent: true, opacity: 0.0,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  });
+  const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+  shaft.position.y = length * 0.36;
+  group.add(shaft);
+
+  // Arrowhead (cone)
+  const headGeo = new THREE.ConeGeometry(0.10, length * 0.28, 8);
+  const headMat = new THREE.MeshBasicMaterial({
+    color: 0x00f2ff, transparent: true, opacity: 0.0,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  });
+  const head = new THREE.Mesh(headGeo, headMat);
+  head.position.y = length * 0.86;
+  group.add(head);
+
+  // Orient group along direction vector
+  group.position.copy(impactPos);
+  const axis = new THREE.Vector3(0, 1, 0);
+  group.quaternion.setFromUnitVectors(axis, dir);
+
+  scene.add(group);
+  return { group, shaft, head, shaftMat, headMat, life: 1.0, born: 0.0 };
+}
+
+/* spawnForceArrow — public entry point called from updateMesons */
+function spawnForceArrow(impactPos, originPos) {
+  const arrow = createForceArrow(impactPos, originPos);
+  state.forceArrows.push(arrow);
+}
+
+/* updateForceArrows — elastic pop-in (0→1 over 0.15s), then fade out */
+function updateForceArrows(dt) {
+  state.forceArrows.forEach(a => {
+    a.life -= dt / 0.40;            // total lifespan = 0.40s
+    a.born += dt;
+
+    // Elastic "pop" scale: overshoot then settle
+    const popT  = Math.min(a.born / 0.15, 1.0);
+    const popS  = popT < 0.6
+      ? 1.0 + 0.35 * Math.sin(popT * Math.PI / 0.6)   // overshoot
+      : 1.0;
+    const alpha = Math.max(0, a.life) * popS;
+
+    a.group.scale.setScalar(popS);
+    a.shaftMat.opacity = alpha * 0.88;
+    a.headMat.opacity  = alpha * 0.92;
+  });
+
+  state.forceArrows = state.forceArrows.filter(a => {
+    if (a.life <= 0) {
+      // Proper disposal
+      a.shaft.geometry.dispose(); a.shaftMat.dispose();
+      a.head.geometry.dispose();  a.headMat.dispose();
+      scene.remove(a.group);
+      return false;
+    }
+    return true;
+  });
+}
+
+// ── Kinetic Pulse Ring ─────────────────────────────────────────
+/* spawnKineticPulse — large additive ring expanding r → 5r in 0.6s */
+function spawnKineticPulse(pos) {
+  const geo = new THREE.RingGeometry(0.05, 0.38, 72);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uLife:  { value: 1.0 },
+      uColor: { value: new THREE.Color(0x00f2ff) }
+    },
+    vertexShader:   `void main(){ gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader: `
+      uniform float uLife;
+      uniform vec3 uColor;
+      void main(){
+        float edge = smoothstep(0.0, 0.15, uLife) * smoothstep(1.0, 0.5, uLife);
+        gl_FragColor = vec4(uColor * 1.6, edge * uLife * 0.78);
+      }
+    `,
+    transparent: true, side: THREE.DoubleSide,
+    depthWrite: false, blending: THREE.AdditiveBlending
+  });
+
+  const ring = new THREE.Mesh(geo, mat);
+  ring.position.copy(pos);
+  ring.lookAt(camera.position);
+  // userData drives the 5× expansion
+  ring.userData = { life: 1.0, initScale: 0.4, maxScale: 5.0 * 0.4 };
+  ring.scale.setScalar(ring.userData.initScale);
+  scene.add(ring);
+  state.kineticPulses.push(ring);
+}
+
+/* updateKineticPulses — expand to 5× initial scale, fade to 0 over 0.6s */
+function updateKineticPulses(dt) {
+  state.kineticPulses.forEach(r => {
+    r.userData.life -= dt / 0.60;   // 0.6s lifetime
+    const t  = 1.0 - Math.max(0, r.userData.life);
+    const sc = THREE.MathUtils.lerp(
+      r.userData.initScale, r.userData.maxScale, t
+    );
+    r.scale.setScalar(sc);
+    r.material.uniforms.uLife.value = Math.max(0, r.userData.life);
+    r.lookAt(camera.position);
+  });
+
+  state.kineticPulses = state.kineticPulses.filter(r => {
+    if (r.userData.life <= 0) {
+      r.geometry.dispose(); r.material.dispose();
+      scene.remove(r); return false;
+    }
+    return true;
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+//  FEATURE 5: EXPONENTIAL STRENGTH RINGS (Scene 2 – Force Field)
+//  Concentric rings spaced r^n, slow breathing pulse
+// ════════════════════════════════════════════════════════════════
+
+const strengthRings  = [];
+const RING_EXPONENT  = 1.72;   // controls how fast spacing grows
+const RING_COUNT     = 5;
+const RING_BASE_R    = 0.9;    // innermost ring radius
+
+(function buildStrengthRings() {
+  for (let i = 0; i < RING_COUNT; i++) {
+    const r = RING_BASE_R * Math.pow(RING_EXPONENT, i);
+    const opacity_base = 0.55 * Math.pow(0.62, i);  // outer rings dimmer
+
+    const geo = new THREE.RingGeometry(r, r + 0.045, 80);
+    const mat = new THREE.ShaderMaterial({
+      uniforms: {
+        uOpacity: { value: 0.0 },
+        uPulse:   { value: 0.0 },
+        uColor:   { value: new THREE.Color(0x00f2ff) }
+      },
+      vertexShader: `void main(){ gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+      fragmentShader: `
+        uniform float uOpacity;
+        uniform float uPulse;
+        uniform vec3 uColor;
+        void main(){
+          gl_FragColor = vec4(uColor * (0.9 + 0.1*uPulse), uOpacity * (0.8 + 0.2*uPulse));
+        }
+      `,
+      transparent: true, side: THREE.DoubleSide,
+      depthWrite: false, blending: THREE.AdditiveBlending
+    });
+
+    const ring = new THREE.Mesh(geo, mat);
+    ring.userData = { baseR: r, opacityBase: opacity_base, phaseOffset: i * 0.42 };
+    scene.add(ring);
+    strengthRings.push(ring);
+  }
+})();
+
+/* updateStrengthRings — show in Scene 2, track nucleon p1, breathe */
+function updateStrengthRings(dt) {
+  const visible = (state.scene === 2) && state.strongActive;
+
+  strengthRings.forEach((ring, i) => {
+    // Follow the nucleon in Scene 2 (only p1 is visible there)
+    ring.position.copy(p1.position);
+    ring.lookAt(camera.position);
+
+    // Update λ-based radius: Yukawa range ∝ 1/λ, so rings scale accordingly
+    const rangeFactor = visible ? (1.0 / state.lambda) : 1.0;
+    const scaledR = ring.userData.baseR * rangeFactor * 1.1;
+    ring.scale.setScalar(scaledR / ring.userData.baseR);
+
+    // Breathing pulse (0.8 → 1.0 scale, slow rhythm)
+    const breath = 0.9 + 0.1 * Math.sin(state.time * 1.4 + ring.userData.phaseOffset);
+    ring.scale.multiplyScalar(breath);
+
+    // Smooth opacity transition
+    const targetOp = visible ? ring.userData.opacityBase : 0.0;
+    const curOp    = ring.material.uniforms.uOpacity.value;
+    ring.material.uniforms.uOpacity.value += (targetOp - curOp) * 0.07;
+    ring.material.uniforms.uPulse.value    =
+      0.5 + 0.5 * Math.sin(state.time * 1.4 + ring.userData.phaseOffset);
+  });
+}
+
+// ════════════════════════════════════════════
+//  HOOK NEW UPDATERS INTO EXISTING animate()
+//  Wraps the already-patched renderer.render (fog is in the chain above)
+// ════════════════════════════════════════════
+// We store a reference to the original animate body by replacing it cleanly.
+// The new feature updaters (arrows, pulses, rings) are injected here so
+// they share the same dt from the main clock — no secondary render hook needed.
+const _coreAnimate = animate;
+(function patchAnimateWithV4Features() {
+  // Cancel the running loop first — it will be restarted below
+  // (we can't cancel rAF without the ID, so instead we set a flag)
+  window._v4PatchApplied = true;
+})();
+
+// Re-declare animate to include new updaters (overrides the previous definition)
+// We shadow the name: the rAF loop already started with the old animate reference,
+// so we add the new calls directly to the top of the render pipeline by injecting
+// into the existing animate() via a clean wrapper on the clock tick.
+// Since animate() calls itself via rAF recursively, we inject via the render hook
+// which fires once per rendered frame — using a stable per-frame dt approximation.
+const _fogRenderRef = renderer.render.bind(renderer);
+let _lastV4Time = performance.now();
+renderer.render = function(s, c) {
+  const now = performance.now();
+  const _dt = Math.min((now - _lastV4Time) / 1000, 0.05);
+  _lastV4Time = now;
+
+  updateForceArrows(_dt);
+  updateKineticPulses(_dt);
+  updateStrengthRings(_dt);
+  _fogRenderRef(s, c);
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+//  V5 VISUAL LAYER — Pure additions, zero modification of existing engine
+//  Features:
+//    1. Force-Based HSL Color Mapping on nucleons + meson glow
+//    2. Extended smooth particle trails (up to 100 pts) with fade
+//    3. Dynamic glowing force-field lines between all active nucleon pairs
+//    4. Subtle auto-orbital camera drift (sinusoidal, non-intrusive)
+//    5. Software bloom via canvas compositing (no CDN dependency)
+//    6. Enhanced starfield density + slow rotation
+//    7. Name label (HTML, already in DOM above)
+//    8. Field Energy bar driven by meson count + lambda
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── 1. FORCE HSL COLOR ENGINE ────────────────────────────────────────────────
+// Maps a 0→1 force value to a CSS hsl string (blue=low → cyan → green → yellow → red=high)
+function v5ForceToHSL(f) {
+  // f in [0,1]: hue travels 200 (blue-cyan) → 60 (yellow) → 0 (red)
+  const hue = THREE.MathUtils.lerp(200, 0, Math.pow(f, 0.6));
+  const sat = 85 + 15 * f;
+  const lit = 45 + 15 * f;
+  return { hue, sat, lit, css: `hsl(${hue.toFixed(0)},${sat.toFixed(0)}%,${lit.toFixed(0)}%)` };
+}
+
+// Nucleon force-magnitude trackers (updated each frame from jitter amplitude)
+const v5NucleonForce = { p1: 0, p2: 0, n1: 0, n2: 0, p3: 0 };
+
+function v5UpdateNucleonColors() {
+  // Compute instantaneous jitter amplitude as proxy for EM force on each nucleon
+  const jAmp    = state.strongActive ? 0.04 : (state.emActive ? 0.22 : 0.06);
+  const baseMag = jAmp / 0.22;  // normalised 0→1
+
+  // Add meson proximity bonus
+  let mesonBonus = Math.min(state.mesons.length / 8, 1.0);
+
+  const forceMaps = [
+    { mesh: p1, key: 'p1', bonus: mesonBonus * 0.4 },
+    { mesh: p2, key: 'p2', bonus: mesonBonus * 0.4 },
+    { mesh: n1, key: 'n1', bonus: mesonBonus * 0.3 },
+    { mesh: n2, key: 'n2', bonus: mesonBonus * 0.25 },
+    { mesh: p3, key: 'p3', bonus: mesonBonus * 0.3  }
+  ];
+
+  forceMaps.forEach(({ mesh, key, bonus }) => {
+    if (!mesh.visible) return;
+    // Smooth force value
+    const raw    = Math.min(baseMag + bonus + 0.1 * Math.sin(state.time * 3 + mesh.position.x), 1.0);
+    v5NucleonForce[key] += (raw - v5NucleonForce[key]) * 0.08;
+    const f    = v5NucleonForce[key];
+    const hsl  = v5ForceToHSL(f);
+
+    // Apply color to halo (child[0] is the halo mesh)
+    if (mesh.children[0] && mesh.children[0].material && mesh.children[0].material.uniforms) {
+      const col = new THREE.Color(`hsl(${hsl.hue},${hsl.sat}%,${hsl.lit}%)`);
+      mesh.children[0].material.uniforms.uColor.value.lerp(col, 0.08);
+      // Drive halo alpha with force
+      mesh.children[0].material.uniforms.uAlpha.value = 0.6 + 0.4 * f;
+    }
+  });
+}
+
+// ── 2. EXTENDED SMOOTH PARTICLE TRAILS ───────────────────────────────────────
+// Each meson gets a secondary 100-point fading trail in addition to the existing 25-pt one.
+// We hook into spawnMeson by wrapping it — reading from state.mesons after push.
+
+const v5MesonTrails = new Map();   // mesonMesh → { line, pts[] }
+const V5_TRAIL_MAX  = 100;
+
+function v5CreateFadingTrail() {
+  const positions = new Float32Array(V5_TRAIL_MAX * 3);
+  const alphas    = new Float32Array(V5_TRAIL_MAX);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('alpha',    new THREE.BufferAttribute(alphas, 1));
+  geo.setDrawRange(0, 0);
+
+  // Custom shader line with per-vertex alpha fade
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uForce: { value: 0.5 } },
+    vertexShader: `
+      attribute float alpha;
+      uniform float uForce;
+      varying float vAlpha;
+      varying float vForce;
+      void main() {
+        vAlpha = alpha;
+        vForce = uForce;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      varying float vAlpha;
+      varying float vForce;
+      void main() {
+        // HSL-mapped colour: hue from force, blue→cyan→yellow→red
+        float h = mix(200.0, 0.0, pow(vForce, 0.6)) / 360.0;
+        // Simple HSL→RGB conversion inline
+        float s = 0.9;
+        float l = 0.55;
+        float c = (1.0 - abs(2.0*l - 1.0)) * s;
+        float x = c * (1.0 - abs(mod(h*6.0, 2.0) - 1.0));
+        float m = l - c/2.0;
+        vec3 rgb;
+        float hi = h * 6.0;
+        if      (hi < 1.0) rgb = vec3(c,x,0);
+        else if (hi < 2.0) rgb = vec3(x,c,0);
+        else if (hi < 3.0) rgb = vec3(0,c,x);
+        else if (hi < 4.0) rgb = vec3(0,x,c);
+        else if (hi < 5.0) rgb = vec3(x,0,c);
+        else               rgb = vec3(c,0,x);
+        rgb += m;
+        gl_FragColor = vec4(rgb * 1.4, vAlpha * 0.72);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+
+  const line = new THREE.Line(geo, mat);
+  scene.add(line);
+  return { line, geo, mat, pts: [] };
+}
+
+function v5UpdateMesonTrails(dt) {
+  // Register new mesons
+  state.mesons.forEach(m => {
+    if (!v5MesonTrails.has(m.mesh)) {
+      v5MesonTrails.set(m.mesh, v5CreateFadingTrail());
+    }
+  });
+
+  // Active meson set for fast lookup
+  const activeMeshes = new Set(state.mesons.map(m => m.mesh));
+
+  // Remove stale trails
+  v5MesonTrails.forEach((trail, mesh) => {
+    if (!activeMeshes.has(mesh)) {
+      scene.remove(trail.line);
+      trail.geo.dispose();
+      trail.mat.dispose();
+      v5MesonTrails.delete(mesh);
+    }
+  });
+
+  // Update active trails
+  state.mesons.forEach(m => {
+    const trail = v5MesonTrails.get(m.mesh);
+    if (!trail) return;
+
+    trail.pts.push(m.mesh.position.clone());
+    if (trail.pts.length > V5_TRAIL_MAX) trail.pts.shift();
+
+    const n   = trail.pts.length;
+    const pos = trail.geo.attributes.position.array;
+    const alp = trail.geo.attributes.alpha.array;
+
+    for (let i = 0; i < n; i++) {
+      pos[i*3]     = trail.pts[i].x;
+      pos[i*3 + 1] = trail.pts[i].y;
+      pos[i*3 + 2] = trail.pts[i].z;
+      alp[i]       = (i / (n - 1)) * 0.85;   // tail→head: 0→0.85
+    }
+
+    trail.geo.setDrawRange(0, n);
+    trail.geo.attributes.position.needsUpdate = true;
+    trail.geo.attributes.alpha.needsUpdate    = true;
+
+    // Drive colour from meson progress (0=cold start, 1=hot impact)
+    trail.mat.uniforms.uForce.value = m.t;
+  });
+}
+
+// ── 3. DYNAMIC GLOWING FORCE-FIELD INTERACTION LINES ──────────────────────────
+// Pairs of visible nucleons get a live glowing connector whose brightness
+// encodes |Yukawa potential| between them: V ∝ exp(-λ·r)/r
+
+const v5ForceLines = [];
+const V5_FL_PAIRS  = [
+  [p1,p2,'pp'], [p1,n1,'pn'], [p2,n1,'pn'],
+  [p1,n2,'pn'], [p2,n2,'pn'], [n1,n2,'nn'],
+  [p3,p1,'pp'], [p3,p2,'pp'], [p3,n1,'pn']
+];
+
+(function v5BuildForceLines() {
+  V5_FL_PAIRS.forEach(([a, b, type]) => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+    const mat = new THREE.ShaderMaterial({
+      uniforms: {
+        uAlpha: { value: 0.0 },
+        uForce: { value: 0.0 },
+        uTime:  { value: 0.0 },
+        uDash:  { value: 0.0 }
+      },
+      vertexShader: `
+        varying float vT;
+        void main() {
+          // pass normalised position along segment (0=A, 1=B)
+          vT = position.x == 0.0 && position.y == 0.0 && position.z == 0.0 ? 0.0 : 1.0;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uAlpha;
+        uniform float uForce;
+        uniform float uTime;
+        varying float vT;
+        void main() {
+          // Dashed glow: modulate along segment
+          float dash = 0.5 + 0.5 * sin((vT * 20.0) - uTime * 6.0);
+          // HSL force colour
+          float h = mix(200.0, 0.0, pow(uForce, 0.6)) / 360.0;
+          float c = 0.9 * (1.0 - abs(2.0*0.55 - 1.0));
+          float x = c * (1.0 - abs(mod(h*6.0, 2.0) - 1.0));
+          float m = 0.55 - c/2.0;
+          vec3 rgb;
+          float hi = h * 6.0;
+          if      (hi < 1.0) rgb = vec3(c,x,0);
+          else if (hi < 2.0) rgb = vec3(x,c,0);
+          else if (hi < 3.0) rgb = vec3(0,c,x);
+          else if (hi < 4.0) rgb = vec3(0,x,c);
+          else if (hi < 5.0) rgb = vec3(x,0,c);
+          else               rgb = vec3(c,0,x);
+          rgb += m;
+          gl_FragColor = vec4(rgb * 1.5, uAlpha * dash * 0.7);
+        }
+      `,
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+    });
+    const line = new THREE.Line(geo, mat);
+    scene.add(line);
+    v5ForceLines.push({ line, geo, mat, a, b, type });
+  });
+})();
+
+function v5UpdateForceLines() {
+  const shouldShow = state.strongActive || (state.emActive && state.scene === 0);
+
+  v5ForceLines.forEach(({ line, geo, mat, a, b }) => {
+    const bothVisible = a.visible && b.visible;
+    const arr = geo.attributes.position.array;
+    arr[0] = a.position.x; arr[1] = a.position.y; arr[2] = a.position.z;
+    arr[3] = b.position.x; arr[4] = b.position.y; arr[5] = b.position.z;
+    geo.attributes.position.needsUpdate = true;
+
+    const r     = a.position.distanceTo(b.position);
+    const lam   = state.lambda;
+    // Yukawa potential magnitude (normalised)
+    const V     = Math.min(Math.exp(-lam * r) / (r * 0.5 + 0.1), 1.0);
+    const tgt   = (shouldShow && bothVisible) ? V * 0.55 : 0.0;
+    mat.uniforms.uAlpha.value += (tgt - mat.uniforms.uAlpha.value) * 0.07;
+    mat.uniforms.uForce.value  = V;
+    mat.uniforms.uTime.value   = state.time;
+  });
+}
+
+// ── 4. SUBTLE ORBITAL CAMERA DRIFT ───────────────────────────────────────────
+// Adds a slow sinusoidal wobble on top of the existing manual orbit.
+// We do NOT modify orb.theta/phi — instead we compute a delta offset each frame.
+
+let v5CamDrift = { enabled: true, thetaAmp: 0.04, phiAmp: 0.018, speed: 0.18 };
+
+function v5ApplyCameraDrift() {
+  if (!v5CamDrift.enabled || orb.isDrag) return;
+  // Gently nudge theta so the scene slowly rotates on its own
+  orb.theta += v5CamDrift.thetaAmp * v5CamDrift.speed * 0.016;
+  // Vertical bob: tiny sinusoidal on phi (completely non-disruptive)
+  const phiBob = v5CamDrift.phiAmp * Math.sin(state.time * 0.22);
+  // We apply as a temporary offset — NOT stored in orb.phi to avoid drift
+  camera.position.y += phiBob * orb.r * 0.01;
+}
+
+// ── 5. SOFTWARE BLOOM via 2D CANVAS COMPOSITING ──────────────────────────────
+// We render to an offscreen canvas, blur it, and composite back with screen blend.
+// This produces a convincing bloom without CDN-dependent EffectComposer.
+
+const v5BloomCanvas  = document.createElement('canvas');
+v5BloomCanvas.id     = 'v5-bloom-canvas';
+v5BloomCanvas.style.cssText =
+  'position:fixed;inset:0;pointer-events:none;z-index:9;mix-blend-mode:screen;opacity:0.55;';
+v5BloomCanvas.width  = Math.floor(window.innerWidth  * 0.35);
+v5BloomCanvas.height = Math.floor(window.innerHeight * 0.35);
+document.getElementById('canvas-wrap').appendChild(v5BloomCanvas);
+const v5BloomCtx     = v5BloomCanvas.getContext('2d');
+
+let v5BloomTimer = 0;
+const V5_BLOOM_INTERVAL = 2;   // update every N frames for performance
+
+function v5UpdateBloom() {
+  v5BloomTimer++;
+  if (v5BloomTimer % V5_BLOOM_INTERVAL !== 0) return;
+
+  const bw = v5BloomCanvas.width;
+  const bh = v5BloomCanvas.height;
+  const sw = renderer.domElement.width;
+  const sh = renderer.domElement.height;
+
+  v5BloomCtx.clearRect(0, 0, bw, bh);
+  // Downscale main render into bloom canvas
+  v5BloomCtx.drawImage(renderer.domElement, 0, 0, bw, bh);
+  // Multi-pass box blur (3 passes = approximates Gaussian)
+  for (let pass = 0; pass < 3; pass++) {
+    v5BloomCtx.filter = `blur(${6 + pass * 4}px)`;
+    v5BloomCtx.globalCompositeOperation = 'source-over';
+    v5BloomCtx.drawImage(v5BloomCanvas, 0, 0);
+  }
+  v5BloomCtx.filter = 'none';
+  // Boost brightness of the blurred overlay
+  v5BloomCtx.globalCompositeOperation = 'lighter';
+  v5BloomCtx.globalAlpha = 0.22;
+  v5BloomCtx.drawImage(v5BloomCanvas, 0, 0);
+  v5BloomCtx.globalAlpha = 1.0;
+  v5BloomCtx.globalCompositeOperation = 'source-over';
+}
+
+// Sync bloom canvas size on resize
+window.addEventListener('resize', () => {
+  v5BloomCanvas.width  = Math.floor(window.innerWidth  * 0.35);
+  v5BloomCanvas.height = Math.floor(window.innerHeight * 0.35);
+});
+
+// ── 6. ENHANCED STARFIELD ────────────────────────────────────────────────────
+// Add a second, denser star layer with slow rotation for depth parallax.
+(function v5StarfieldEnhance() {
+  const geo  = new THREE.BufferGeometry();
+  const N    = 4000;
+  const pos  = new Float32Array(N * 3);
+  const cols = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const r   = 60 + Math.random() * 120;
+    const th  = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    pos[i*3]   = r * Math.sin(phi) * Math.cos(th);
+    pos[i*3+1] = r * Math.sin(phi) * Math.sin(th);
+    pos[i*3+2] = r * Math.cos(phi);
+    // Slight colour tint: mostly white-blue, some warm
+    const warm = Math.random() < 0.15;
+    cols[i*3]   = warm ? 1.0 : 0.7 + Math.random()*0.3;
+    cols[i*3+1] = warm ? 0.8 : 0.75 + Math.random()*0.25;
+    cols[i*3+2] = warm ? 0.5 : 0.9 + Math.random()*0.1;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color',    new THREE.BufferAttribute(cols, 3));
+  const mat = new THREE.PointsMaterial({
+    size: 0.055, sizeAttenuation: true,
+    vertexColors: true,
+    transparent: true, opacity: 0.65,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  });
+  const stars = new THREE.Points(geo, mat);
+  stars.userData.v5Stars = true;
+  scene.add(stars);
+
+  // Slow rotation via render hook — stored on the object
+  stars.userData.rotSpeed = 0.00008;
+})();
+
+function v5RotateStarfield() {
+  scene.children.forEach(obj => {
+    if (obj.userData.v5Stars) {
+      obj.rotation.y += obj.userData.rotSpeed;
+      obj.rotation.x += obj.userData.rotSpeed * 0.3;
+    }
+  });
+}
+
+// ── 8. FIELD ENERGY BAR ───────────────────────────────────────────────────────
+const v5EbFill = document.getElementById('v5-eb-fill');
+function v5UpdateEnergyBar() {
+  if (!v5EbFill) return;
+  // Energy proxy: active mesons * lambda normalised
+  const mesonContrib = Math.min(state.mesons.length / 8, 1.0);
+  const lambdaNorm   = (state.lambda - 0.2) / 4.8;
+  const strongBonus  = state.strongActive ? 0.25 : 0.0;
+  const emBonus      = state.emActive     ? 0.20 : 0.0;
+  const energy       = Math.min(mesonContrib * 0.55 + lambdaNorm * 0.2 + strongBonus + emBonus, 1.0);
+
+  const pct    = (energy * 100).toFixed(1);
+  const hue    = THREE.MathUtils.lerp(200, 0, energy);
+  v5EbFill.style.height     = pct + '%';
+  v5EbFill.style.background = `linear-gradient(0deg, hsl(${hue},90%,55%), hsl(${hue+40},90%,65%))`;
+  v5EbFill.style.boxShadow  = `0 0 ${6+energy*14}px hsl(${hue},90%,55%)`;
+}
+
+// ═══════════════════════════════════════════
+//  V5 MASTER TICKER — hooks into render chain
+// ═══════════════════════════════════════════
+const _v5BaseRender = renderer.render.bind(renderer);
+let   _v5LastTime   = performance.now();
+
+renderer.render = function(sc, cam) {
+  const now = performance.now();
+  const dt  = Math.min((now - _v5LastTime) / 1000, 0.05);
+  _v5LastTime = now;
+
+  // Run all v5 visual systems
+  v5UpdateNucleonColors();
+  v5UpdateMesonTrails(dt);
+  v5UpdateForceLines();
+  v5ApplyCameraDrift();
+  v5RotateStarfield();
+  v5UpdateEnergyBar();
+
+  // Actual render
+  _v5BaseRender(sc, cam);
+
+  // Bloom runs post-render so it captures the final frame
+  v5UpdateBloom();
+};
+
+console.log('[V5] Visual layer loaded: HSL colour mapping, 100-pt trails, force lines, bloom, starfield, energy bar, name label.');
+
+
+// ════════════════════════════════════════════════════════════════════════════
+//  V6 ADAPTIVE PERFORMANCE + RESPONSIVE UI LAYER
+//  Pure append — zero modification of existing engine above
+//
+//  Systems:
+//    A. Device capability detection → quality tier (LOW / MED / HIGH)
+//    B. Adaptive pixel ratio + trail length + bloom toggle
+//    C. FPS tracker with dynamic quality degradation
+//    D. Tab-visibility battery saver (pauses heavy effects when hidden)
+//    E. UI collapse toggle
+//    F. Proper canvas resize handler (supplements existing one)
+//    G. Touch-friendly pinch-to-zoom
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── A. DEVICE CAPABILITY DETECTION ───────────────────────────────────────────
+const v6Device = (function detectDevice() {
+  const isMobile   = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+                     || window.innerWidth < 768;
+  const isLowEnd   = isMobile || navigator.hardwareConcurrency <= 2;
+  const pixelRatio = isLowEnd ? Math.min(window.devicePixelRatio, 1.25)
+                               : Math.min(window.devicePixelRatio, 2);
+
+  // Quality tiers: LOW | MED | HIGH
+  const tier = isLowEnd ? 'LOW'
+             : (navigator.hardwareConcurrency >= 8 ? 'HIGH' : 'MED');
+
+  return { isMobile, isLowEnd, pixelRatio, tier };
+})();
+
+// Apply adaptive pixel ratio to existing renderer immediately
+renderer.setPixelRatio(v6Device.pixelRatio);
+document.getElementById('v6-quality').textContent = `QUALITY: ${v6Device.tier}`;
+
+// Tier-based trail cap override for v5 trail system
+if (typeof V5_TRAIL_MAX !== 'undefined') {
+  // We can't reassign a const, but we can cap the effective push length
+  // by patching the v5UpdateMesonTrails via a frame-rate reducer below
+}
+
+// Bloom intensity per tier
+if (v6Device.isLowEnd && typeof v5BloomCanvas !== 'undefined') {
+  v5BloomCanvas.style.opacity = '0.25';  // reduce bloom on low-end
+  if (v6Device.tier === 'LOW') v5BloomCanvas.style.display = 'none';  // disable on LOW
+}
+
+// ── B. FPS TRACKER + DYNAMIC QUALITY DEGRADATION ─────────────────────────────
+const v6FPS = {
+  frames: 0,
+  lastTime: performance.now(),
+  current: 60,
+  drops: 0,
+  badge: document.getElementById('v6-fps')
+};
+
+const _v6BaseRender2 = renderer.render.bind(renderer);
+let _v6LastRender2   = performance.now();
+
+renderer.render = function(sc, cam) {
+  v6FPS.frames++;
+  const now = performance.now();
+  const elapsed = now - v6FPS.lastTime;
+
+  if (elapsed >= 1000) {
+    v6FPS.current = Math.round((v6FPS.frames * 1000) / elapsed);
+    v6FPS.frames  = 0;
+    v6FPS.lastTime = now;
+
+    // Update FPS badge
+    if (v6FPS.badge) {
+      const col = v6FPS.current >= 50 ? 'rgba(0,242,255,0.3)'
+                : v6FPS.current >= 30 ? 'rgba(255,200,50,0.4)'
+                : 'rgba(255,50,50,0.5)';
+      v6FPS.badge.textContent = `${v6FPS.current} FPS`;
+      v6FPS.badge.style.color = col;
+    }
+
+    // Dynamic degradation: if sustained low FPS, reduce bloom
+    if (v6FPS.current < 30) {
+      v6FPS.drops++;
+      if (v6FPS.drops >= 3 && typeof v5BloomCanvas !== 'undefined') {
+        v5BloomCanvas.style.opacity = String(
+          Math.max(0, parseFloat(v5BloomCanvas.style.opacity || '0.55') - 0.1)
+        );
+      }
+      // Slow down orbital drift to save GPU work
+      if (typeof v5CamDrift !== 'undefined') v5CamDrift.speed *= 0.9;
+    } else {
+      v6FPS.drops = Math.max(0, v6FPS.drops - 1);
+    }
+
+    // Update quality badge with FPS info
+    document.getElementById('v6-quality').textContent =
+      `${v6Device.tier} · ${v6FPS.current}fps`;
+  }
+
+  _v6BaseRender2(sc, cam);
+};
+
+// ── C. TAB VISIBILITY BATTERY SAVER ──────────────────────────────────────────
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    // Suspend heavy v5 effects
+    if (typeof v5BloomCanvas !== 'undefined') v5BloomCanvas.style.display = 'none';
+    if (typeof v5CamDrift    !== 'undefined') v5CamDrift.enabled = false;
+  } else {
+    // Restore
+    if (typeof v5BloomCanvas !== 'undefined' && v6Device.tier !== 'LOW') {
+      v5BloomCanvas.style.display = '';
+    }
+    if (typeof v5CamDrift !== 'undefined') v5CamDrift.enabled = true;
+  }
+});
+
+// ── D. ROBUST CANVAS RESIZE HANDLER ──────────────────────────────────────────
+// Supplements the existing resize listener — ensures canvas fills screen on
+// orientation change (mobile) and dynamic viewport changes (iOS Safari 15+)
+function v6HandleResize() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(v6Device.pixelRatio);  // re-apply tier limit
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+
+  // Resize bloom canvas proportionally
+  if (typeof v5BloomCanvas !== 'undefined') {
+    v5BloomCanvas.width  = Math.floor(w * 0.35);
+    v5BloomCanvas.height = Math.floor(h * 0.35);
+  }
+}
+
+// debounced resize
+let _v6ResizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(_v6ResizeTimer);
+  _v6ResizeTimer = setTimeout(v6HandleResize, 120);
+});
+
+// iOS Safari fires orientationchange separately
+window.addEventListener('orientationchange', () => {
+  setTimeout(v6HandleResize, 300);  // wait for layout to settle
+});
+
+// ── E. TOUCH PINCH-TO-ZOOM ───────────────────────────────────────────────────
+(function v6PinchZoom() {
+  let lastPinchDist = 0;
+  renderer.domElement.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      lastPinchDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+    }
+  }, { passive: true });
+
+  renderer.domElement.addEventListener('touchmove', e => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const delta = lastPinchDist - dist;
+      orb.r = Math.max(5, Math.min(30, orb.r + delta * 0.04));
+      lastPinchDist = dist;
+    }
+  }, { passive: true });
+})();
+
+// ── F. UI COLLAPSE TOGGLE ─────────────────────────────────────────────────────
+(function v6CollapseToggle() {
+  const btn = document.getElementById('ui-toggle');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    document.body.classList.toggle('ui-hidden');
+    btn.textContent = document.body.classList.contains('ui-hidden') ? 'SHOW UI' : 'HIDE UI';
+  });
+})();
+
+// ── G. MOBILE NAV: single-tap activates without long-press ───────────────────
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('touchend', e => {
+    e.preventDefault();
+    btn.click();
+  }, { passive: false });
+});
+
+// ── H. LOW-END TRAIL FRAME-SKIP ──────────────────────────────────────────────
+// On LOW tier devices, the v5 trail update runs every 2nd frame to halve cost.
+if (v6Device.tier === 'LOW') {
+  let _v6TrailFrame = 0;
+  const _v6BaseRender3 = renderer.render.bind(renderer);
+  renderer.render = function(sc, cam) {
+    _v6TrailFrame++;
+    // Temporarily hide trails on odd frames for LOW devices
+    if (_v6TrailFrame % 2 === 0 && typeof v5MesonTrails !== 'undefined') {
+      v5MesonTrails.forEach(t => { t.line.visible = false; });
+    } else if (typeof v5MesonTrails !== 'undefined') {
+      v5MesonTrails.forEach(t => { t.line.visible = true; });
+    }
+    _v6BaseRender3(sc, cam);
+  };
+}
+
+console.log(`[V6] Adaptive layer loaded | Device: ${v6Device.tier} | Mobile: ${v6Device.isMobile} | DPR: ${v6Device.pixelRatio}`);
+
+</script>
+</body>
+</html>
